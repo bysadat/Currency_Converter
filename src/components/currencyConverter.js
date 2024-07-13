@@ -1,22 +1,29 @@
 import React, { useState, useEffect } from "react";
-import { View, Text, TextInput, Button, StyleSheet } from "react-native";
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  StyleSheet,
+  ActivityIndicator,
+} from "react-native";
 import RNPickerSelect from "react-native-picker-select";
 import { getLatestRates } from "../services/currencyServices";
 
 const CurrencyConverter = () => {
   const [baseCurrency, setBaseCurrency] = useState("USD");
-  const [targetCurrency, setTargetCurrency] = useState("EUR");
+  const [targetCurrency, setTargetCurrency] = useState("GHS");
   const [amount, setAmount] = useState("1");
   const [conversionRate, setConversionRate] = useState(null);
   const [convertedAmount, setConvertedAmount] = useState(null);
   const [currencyOptions, setCurrencyOptions] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetchConversionRate();
   }, [baseCurrency, targetCurrency]);
 
   useEffect(() => {
-    // TThis Fetches the  currency options when component mounts.
     fetchCurrencyOptions();
   }, []);
 
@@ -24,9 +31,10 @@ const CurrencyConverter = () => {
     try {
       const data = await getLatestRates(baseCurrency);
       setConversionRate(data.conversion_rates[targetCurrency]);
+      setLoading(false);
     } catch (error) {
       console.error(
-        "Error getting latest conversion rate , please try again later",
+        "Error getting latest conversion rate, please try again later",
         error
       );
     }
@@ -36,12 +44,12 @@ const CurrencyConverter = () => {
     try {
       const data = await getLatestRates("USD");
       const options = Object.keys(data.conversion_rates).map((key) => ({
-        label: key,
+        label: `${data.flags[key]} ${key}`,
         value: key,
       }));
       setCurrencyOptions(options);
     } catch (error) {
-      console.error("Error getting  currency option.Please try again ", error);
+      console.error("Error getting currency options. Please try again", error);
     }
   };
 
@@ -51,12 +59,24 @@ const CurrencyConverter = () => {
       setConvertedAmount(null);
       return;
     }
-    setConvertedAmount((amountFloat * conversionRate).toFixed(2));
+    const result = (amountFloat * conversionRate).toFixed(2);
+    const formattedResult = new Intl.NumberFormat().format(result);
+    setConvertedAmount(formattedResult);
   };
+
+  if (loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#0000ff" />
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Currency Converter</Text>
+      <Text style={styles.title}>
+        Convert <Text style={{ color: "green" }}>$</Text>
+      </Text>
       <TextInput
         style={styles.input}
         placeholder="Enter Amount"
@@ -64,79 +84,103 @@ const CurrencyConverter = () => {
         value={amount}
         onChangeText={setAmount}
       />
+      <Text style={styles.label}>Base Currency</Text>
       <RNPickerSelect
-        style={pickerSelectStyles}
         onValueChange={(value) => setBaseCurrency(value)}
         items={currencyOptions}
+        style={pickerSelectStyles}
         placeholder={{ label: "Select Base Currency", value: null }}
         value={baseCurrency}
       />
+      <Text style={styles.label}>Quote Currency</Text>
       <RNPickerSelect
-        style={pickerSelectStyles}
         onValueChange={(value) => setTargetCurrency(value)}
         items={currencyOptions}
-        placeholder={{ label: "Select Target Currency", value: null }}
+        style={pickerSelectStyles}
+        placeholder={{ label: "Select Quote Currency", value: null }}
         value={targetCurrency}
       />
-      <Button title="Convert" onPress={handleConvert} />
-      {convertedAmount && (
-        <Text style={styles.result}>
-          {amount} {baseCurrency} = {convertedAmount} {targetCurrency}
+      <TouchableOpacity style={styles.button} onPress={handleConvert}>
+        <Text style={styles.buttonText}>
+          Convert <Text style={{ color: "green" }}>$</Text>
         </Text>
-      )}
+      </TouchableOpacity>
+      {convertedAmount && <Text style={styles.result}>{convertedAmount}</Text>}
     </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
-    padding: 20,
+    flex: 1,
     justifyContent: "center",
-    alignItems: "center",
-    gap: 10,
+    padding: 20,
+    backgroundColor: "#fff",
   },
   title: {
-    fontSize: 30,
-    marginBottom: 200,
+    fontSize: 24,
+    fontWeight: "bold",
+    textAlign: "center",
+    marginBottom: 20,
   },
   input: {
-    height: 40,
-    borderColor: "black",
+    height: 50,
+    borderColor: "#ccc",
     borderWidth: 1,
-    marginBottom: 30,
-    width: "100%",
-    padding: 10,
+    borderRadius: 5,
+    paddingHorizontal: 10,
+    marginBottom: 20,
+    backgroundColor: "#F5F5F5",
+  },
+  label: {
+    fontSize: 16,
+    fontWeight: "bold",
+    marginBottom: 5,
+  },
+  button: {
+    backgroundColor: "green",
+    padding: 15,
+    borderRadius: 8,
+    alignItems: "center",
+    marginTop: 20,
+    height: 50,
+  },
+  buttonText: {
+    color: "#fff",
+    fontSize: 15,
+    fontWeight: "bold",
   },
   result: {
-    marginTop: 50,
-    fontSize: 30,
+    marginTop: 20,
+    fontSize: 18,
+    textAlign: "center",
+    fontWeight: "bold",
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
   },
 });
 
 const pickerSelectStyles = StyleSheet.create({
   inputIOS: {
-    fontSize: 16,
-    paddingVertical: 12,
-    paddingHorizontal: 10,
+    height: 50,
+    borderColor: "#ccc",
     borderWidth: 1,
-    borderColor: "black",
-    borderRadius: 4,
-    color: "black",
-    paddingRight: 30,
-    marginBottom: 10,
-    width: "100%",
+    borderRadius: 5,
+    paddingHorizontal: 10,
+    marginBottom: 20,
+    backgroundColor: "#F5F5F5",
   },
   inputAndroid: {
-    fontSize: 16,
+    height: 50,
+    borderColor: "#ccc",
+    borderWidth: 1,
+    borderRadius: 5,
     paddingHorizontal: 10,
-    paddingVertical: 8,
-    borderWidth: 0.5,
-    borderColor: "black",
-    borderRadius: 8,
-    color: "black",
-    paddingRight: 30,
-    marginBottom: 10,
-    width: "100%",
+    marginBottom: 20,
+    backgroundColor: "#F5F5F5",
   },
 });
 
